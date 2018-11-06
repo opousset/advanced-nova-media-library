@@ -65,7 +65,7 @@ class Images extends Field
 
         $class = get_class($model);
         $class::saved(function ($model) use ($data, $attribute) {
-            $remainingIds = $this->removeDeletedImages($data, $model->getMedia($attribute));
+            $remainingIds = $this->removeDeletedImages($data, $model->getMedia($attribute), $model->getKeyType());
             $newIds = $this->addNewImages($data, $model, $attribute);
             $this->setOrder($remainingIds->union($newIds)->sortKeys()->all());
         });
@@ -97,12 +97,17 @@ class Images extends Field
             });
     }
 
-    private function removeDeletedImages($data, Collection $medias): Collection
+    private function removeDeletedImages($data, Collection $medias, $keyType = 'int'): Collection
     {
         $remainingIds = collect($data)->filter(function ($value) {
             return !$value instanceof UploadedFile;
-        })->map(function ($value) {
-            return (int)$value;
+        })->map(function ($value) use ($keyType) {
+            switch (strtolower($keyType)) {
+                case 'int':
+                    return (int) $value;
+                default:
+                    return $value;
+            }
         });
 
         $medias->pluck('id')->diff($remainingIds)->each(function ($id) use ($medias) {
